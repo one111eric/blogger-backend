@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/one111eric/blogger-backend/db"
+	"github.com/one111eric/blogger-backend/logger"
 	"github.com/one111eric/blogger-backend/models"
-	"github.com/rs/zerolog/log"
 )
 
 func GetPosts(w http.ResponseWriter, r *http.Request, database *db.Database) {
@@ -17,20 +17,20 @@ func GetPosts(w http.ResponseWriter, r *http.Request, database *db.Database) {
 		traceId = uuid.New().String()
 	}
 
-	log.Info().
-		Str("traceId", traceId).
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Msg("Handling GetPosts request")
+	logger.Info("Handling GetPosts request", map[string]interface{}{
+		"traceId": traceId,
+		"method":  r.Method,
+		"path":    r.URL.Path,
+	})
 
 	// Return empty array if no posts found
 	posts := []models.Post{}
 	results, err := database.GetPosts()
 	if err != nil {
-		log.Error().
-			Str("traceId", traceId).
-			Err(err).
-			Msg("Error fetching posts from database")
+		logger.Error("Failed to get posts", map[string]interface{}{
+			"traceId": traceId,
+			"error":   err.Error(),
+		})
 
 		errorResponse := models.ErrorResponse{
 			Error:   err.Error(),
@@ -46,10 +46,10 @@ func GetPosts(w http.ResponseWriter, r *http.Request, database *db.Database) {
 		posts = results
 	}
 
-	log.Info().
-		Str("traceId", traceId).
-		Int("postCount", len(posts)).
-		Msg("Successfully fetched posts")
+	logger.Info("Successfully retrieved posts", map[string]interface{}{
+		"traceId": traceId,
+		"count":   len(posts),
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	response := models.Response{
@@ -66,20 +66,20 @@ func CreatePost(w http.ResponseWriter, r *http.Request, database *db.Database) {
 		traceId = uuid.New().String()
 	}
 
-	log.Info().
-		Str("traceId", traceId).
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Msg("Handling CreatePost request")
+	logger.Info("Handling CreatePost request", map[string]interface{}{
+		"traceId": traceId,
+		"method":  r.Method,
+		"path":    r.URL.Path,
+	})
 
 	// Decode the request body into a Post object
 	var newPost models.Post
 	err := json.NewDecoder(r.Body).Decode(&newPost)
 	if err != nil {
-		log.Error().
-			Str("traceId", traceId).
-			Err(err).
-			Msg("Invalid request body for CreatePost")
+		logger.Error("Invalid request body for CreatePost", map[string]interface{}{
+			"traceId": traceId,
+			"error":   err.Error(),
+		})
 
 		errorResponse := models.ErrorResponse{
 			Error:   "Invalid request body",
@@ -94,10 +94,10 @@ func CreatePost(w http.ResponseWriter, r *http.Request, database *db.Database) {
 	// Call the database layer to create a new post
 	id, err := database.CreatePost(&newPost)
 	if err != nil {
-		log.Error().
-			Str("traceId", traceId).
-			Err(err).
-			Msg("Error creating post in database")
+		logger.Error("Error creating post in database", map[string]interface{}{
+			"traceId": traceId,
+			"error":   err.Error(),
+		})
 
 		errorResponse := models.ErrorResponse{
 			Error:   err.Error(),
@@ -112,10 +112,10 @@ func CreatePost(w http.ResponseWriter, r *http.Request, database *db.Database) {
 	// Assign the generated ID to the new post
 	newPost.ID = id
 
-	log.Info().
-		Str("traceId", traceId).
-		Int("postId", id).
-		Msg("Successfully created new post")
+	logger.Info("Successfully created new post", map[string]interface{}{
+		"traceId": traceId,
+		"postId":  id,
+	})
 
 	// Respond with the newly created post and the traceId
 	w.Header().Set("Content-Type", "application/json")
