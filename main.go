@@ -2,43 +2,47 @@ package main
 
 import (
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/one111eric/blogger-backend/app"
 	"github.com/one111eric/blogger-backend/db"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"github.com/one111eric/blogger-backend/logger"
 )
 
 func main() {
-	// Set up zerolog
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+	// Init Logger
+	logger.InitializeLogger()
 
-	log.Info().Msg("Starting server initialization...")
+	// Log the application startup
+	logger.Info("Application is starting", map[string]interface{}{
+		"port": 8080,
+	})
 
 	// Initialize the database
 	database, err := db.Initialize("./blog.db")
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error initializing database")
+		logger.Error("Error initializing database", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
-			log.Warn().Err(err).Msg("Error closing database")
+			logger.Error("Error closing database", map[string]interface{}{
+				"error": err.Error(),
+			})
 		}
 	}()
 
 	// Create a default HTTP server
 	mux := http.NewServeMux()
 
-	// Register v1 routes (pass the database connection)
+	// Register v1 routes
 	app.V1Routes(mux, database)
 
 	// Start the server
-	address := ":8080"
-	log.Info().Str("address", address).Msg("Server listening")
-	if err := http.ListenAndServe(address, mux); err != nil {
-		log.Fatal().Err(err).Msg("Server failed")
-	}
+	logger.Info("Server listening", map[string]interface{}{
+		"port": 8080,
+	})
+	//fmt.Println("Server listening on :8080")
+	http.ListenAndServe(":8080", mux)
 }
