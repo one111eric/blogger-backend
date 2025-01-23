@@ -84,8 +84,8 @@ func (d *Database) GetPostById(id int) (*models.Post, error) {
 func (d *Database) CreatePost(post *models.Post) (int, error) {
 	post.PostTime = time.Now() // Set the current time for postTime
 	query := `
-		"INSERT INTO posts (title, author, content, postTime) 
-		VALUES (?, ?, ?, ?)",
+		INSERT INTO posts (title, author, content, postTime)
+		VALUES (?, ?, ?, ?)
 	`
 	result, err := d.DB.Exec(
 		query,

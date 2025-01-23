@@ -216,13 +216,6 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, database *db.Data
 		return
 	}
 
-	// Decode the request body
-	// var post models.Post
-	// if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
-	// 	http.Error(w, "Invalid request body", http.StatusBadRequest)
-	// 	return
-	// }
-
 	// Attempt to delete the post
 	rowsDeleted, err := database.DeletePost(id)
 	if err != nil {
