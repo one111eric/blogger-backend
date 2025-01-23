@@ -6,6 +6,7 @@ import (
 	"github.com/one111eric/blogger-backend/app"
 	"github.com/one111eric/blogger-backend/db"
 	"github.com/one111eric/blogger-backend/logger"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -38,11 +39,18 @@ func main() {
 
 	// Register v1 routes
 	app.V1Routes(mux, database)
+	// Set up CORS middleware
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"}, // Frontend URL
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "X-Trace-Id"},
+		AllowCredentials: true,
+	}).Handler(mux)
 
 	// Start the server
 	logger.Info("Server listening", map[string]interface{}{
 		"port": 8080,
 	})
 	//fmt.Println("Server listening on :8080")
-	http.ListenAndServe(":8080", mux)
+	http.ListenAndServe(":8080", corsHandler)
 }
