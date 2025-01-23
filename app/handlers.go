@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/one111eric/blogger-backend/db"
@@ -57,6 +58,32 @@ func GetPosts(w http.ResponseWriter, r *http.Request, database *db.Database) {
 		TraceId: traceId,
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+func GetPostByIdHandler(w http.ResponseWriter, r *http.Request, database *db.Database, idStr string) {
+	traceId := r.Header.Get("X-Trace-Id")
+	if traceId == "" {
+		traceId = uuid.New().String()
+	}
+
+	// Extract the ID from the request
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	post, err := database.GetPostById(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"post":    post,
+		"traceId": traceId,
+	})
 }
 
 func CreatePost(w http.ResponseWriter, r *http.Request, database *db.Database) {
@@ -124,4 +151,88 @@ func CreatePost(w http.ResponseWriter, r *http.Request, database *db.Database) {
 		TraceId: traceId,
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+func EditPostHandler(w http.ResponseWriter, r *http.Request, database *db.Database, idStr string) {
+	traceId := r.Header.Get("X-Trace-Id")
+	if traceId == "" {
+		traceId = uuid.New().String()
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+
+		logger.Error("Invalid post ID", map[string]interface{}{
+			"id":    id,
+			"error": err.Error(),
+		})
+		errorResponse := models.ErrorResponse{
+			Error:   err.Error(),
+			TraceId: traceId,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError) //500
+		json.NewEncoder(w).Encode(errorResponse)
+		return
+	}
+
+	var post models.Post
+	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	rowsAffected, err := database.EditPost(&post)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"rowsAffected": rowsAffected,
+		"traceId":      traceId,
+	})
+}
+
+func DeletePostHandler(w http.ResponseWriter, r *http.Request, database *db.Database, idStr string) {
+	traceId := r.Header.Get("X-Trace-Id")
+	if traceId == "" {
+		traceId = uuid.New().String()
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+
+		logger.Error("Invalid post ID", map[string]interface{}{
+			"id":    id,
+			"error": err.Error(),
+		})
+		errorResponse := models.ErrorResponse{
+			Error:   err.Error(),
+			TraceId: traceId,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError) //500
+		json.NewEncoder(w).Encode(errorResponse)
+		return
+	}
+
+	// Decode the request body
+	// var post models.Post
+	// if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
+	// 	http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// 	return
+	// }
+
+	// Attempt to delete the post
+	rowsDeleted, err := database.DeletePost(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"rowsDeleted": rowsDeleted,
+		"traceId":     traceId,
+	})
 }

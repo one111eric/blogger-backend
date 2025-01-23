@@ -2,7 +2,9 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -39,7 +41,10 @@ func Initialize(dbPath string) (*Database, error) {
 }
 
 func (d *Database) GetPosts() ([]models.Post, error) {
-	rows, err := d.DB.Query("SELECT id, title, author, content, postTime, editTime FROM posts")
+	query := `
+		SELECT id, title, author, content, postTime, editTime FROM posts
+	`
+	rows, err := d.DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +61,34 @@ func (d *Database) GetPosts() ([]models.Post, error) {
 	return posts, nil
 }
 
+func (d *Database) GetPostById(id int) (*models.Post, error) {
+	query := `
+		SELECT id, title, author, content, postTime, editTime 
+		FROM posts WHERE id = ?
+	`
+	// Use QueryRow for a single result
+	row := d.DB.QueryRow(query, id)
+
+	var post models.Post
+	err := row.Scan(&post.ID, &post.Title, &post.Author, &post.Content, &post.PostTime, &post.EditTime)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("no post found with id: " + strconv.Itoa(id))
+		}
+		return nil, err
+	}
+
+	return &post, nil
+}
+
 func (d *Database) CreatePost(post *models.Post) (int, error) {
 	post.PostTime = time.Now() // Set the current time for postTime
+	query := `
+		"INSERT INTO posts (title, author, content, postTime) 
+		VALUES (?, ?, ?, ?)",
+	`
 	result, err := d.DB.Exec(
-		"INSERT INTO posts (title, author, content, postTime) VALUES (?, ?, ?, ?)",
+		query,
 		post.Title, post.Author, post.Content, post.PostTime,
 	)
 	if err != nil {
@@ -71,6 +100,45 @@ func (d *Database) CreatePost(post *models.Post) (int, error) {
 		return 0, err
 	}
 	return int(id), nil
+}
+
+func (d *Database) EditPost(post *models.Post) (int, error) {
+	*post.EditTime = time.Now()
+	query := `
+		UPDATE posts SET content = ?, editTime = ? 
+		WHERE id = ? 
+	`
+	result, err := d.DB.Exec(query, post.Content, *post.EditTime, post.ID)
+	if err != nil {
+		return 0, err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if rowsAffected == 0 {
+		return 0, errors.New("no rows affected, post not found")
+	}
+	return int(rowsAffected), nil
+}
+
+func (d *Database) DeletePost(id int) (int, error) {
+	query := `
+		DELETE from posts 
+		WHERE id = ? 
+	`
+	result, err := d.DB.Exec(query, id)
+	if err != nil {
+		return 0, err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if rowsAffected == 0 {
+		return 0, errors.New("no rows affected, post not found")
+	}
+	return int(rowsAffected), nil
 }
 
 // Close closes the database connection

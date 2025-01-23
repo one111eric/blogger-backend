@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/one111eric/blogger-backend/app"
 	"github.com/one111eric/blogger-backend/db"
 	"github.com/one111eric/blogger-backend/logger"
@@ -34,18 +35,17 @@ func main() {
 		}
 	}()
 
-	// Create a default HTTP server
-	mux := http.NewServeMux()
+	router := mux.NewRouter()
 
 	// Register v1 routes
-	app.V1Routes(mux, database)
+	app.V1Routes(router, database)
 	// Set up CORS middleware
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"}, // Frontend URL
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "X-Trace-Id"},
 		AllowCredentials: true,
-	}).Handler(mux)
+	}).Handler(router)
 
 	// Start the server
 	logger.Info("Server listening", map[string]interface{}{
